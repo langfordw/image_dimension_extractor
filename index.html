@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Image Dimension Extractor</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <link rel="stylesheet" href="files/font-awesome.css">
+
+    <!-- 
+      TO DO:
+        - fix re-scaling issue (set scale only works once)
+        - dual units would be nice (display unit is configurable)
+        - add export!
+        - line color selector
+  
+     -->
+
+    <style>
+        body {
+            padding-top: 10px;
+            padding-bottom: 30px;
+            margin-left:10%;
+            margin-right:10%;
+        }
+
+        svg {
+            border: 0px solid black;
+            display: block;
+            margin-left: 0%;
+            margin-right: 0%;
+
+        }
+
+        div.controls {
+            text-align: center;
+        }
+
+        div.controls i {
+            margin: 3px;
+        }
+
+        div.controls p {
+
+        }
+
+        div.controls-zoom, div.controls-pan {
+            display: inline-block;
+        }
+
+        div.controls-zoom {
+            margin-left: 0px;
+        }
+
+        div.svg-container {
+          display: inline-block;
+          position: relative;
+          width: 80%;
+          padding-bottom: 100%; 
+          vertical-align: middle; 
+          overflow: hidden;
+        }
+
+        div.controller {
+          display: inline-block;
+          position: absolute;
+          width: 15%;
+          padding-left:1%;
+        }
+
+    </style>
+
+    <script type="text/javascript" src="files/jquery-2.js"></script>
+
+    <script type="text/javascript" src="files/jquery.js"></script>
+
+    <!-- // <script type="text/javascript" src="/home/daniel/dev/jquery-svg-pan-zoom/compiled/jquery.svg.pan.zoom.js"></script> -->
+
+    <script>
+        var example1; //globals so we can manipulate them in the debugger
+        $(function() {
+            "use strict";
+            var examples = $("svg").svgPanZoom();
+            examples.maxZoom = 30;
+            //examples.events.drag = false;
+
+            var callback= function(example) {
+                return function(event) {
+                    if ($(event.target).hasClass("fa-arrow-up"))
+                        example.panUp()
+                    if ($(event.target).hasClass("fa-arrow-down"))
+                        example.panDown()
+                    if ($(event.target).hasClass("fa-arrow-left"))
+                        example.panLeft()
+                    if ($(event.target).hasClass("fa-arrow-right"))
+                        example.panRight()
+                    if ($(event.target).hasClass("fa-plus"))
+                        example.zoomIn()
+                    if ($(event.target).hasClass("fa-minus"))
+                        example.zoomOut()
+                    if ($(event.target).hasClass("fa-refresh"))
+                        example.reset()
+                }
+            };
+
+            example1= examples[0]
+
+            $("div#example1 i").click(callback(example1));
+        });
+    </script>
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-default">
+    <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand">Image Dimension Extractor</a>
+        </div>
+        <!-- <ul class="nav navbar-nav"> -->
+          <!-- <li class="active"><a href="#">Home</a></li> -->
+          <!-- li><input class="btn btn-default" type="button" value="Input" vertical-align:"middle"></li>
+          <li><input class="form-control" type="text" placeholder="Readonly input here…" readonly></li>
+          <li><a href="#">Page 3</a></li> -->
+        <!-- </ul> -->
+    </div>
+</nav>
+<div class="svg-container">
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 1000 1000">
+
+    <title>Rotate to Point at Cursor</title>
+    <style>
+        * { vector-effect:non-scaling-stroke;}
+        circle { fill:none; stroke:orange; stroke-width:2px }
+        line   { stroke:red; stroke-width:4px; stroke-linecap:round; fill-opacity:50%;  }
+    </style>
+    <image  x="0" y="0" width="1000" height="666" xlink:href="transistor_gik02.jpg" id="img"/>
+    <circle cx="0" cy="0" r="10" id="dot"/>
+    <line x1="0" y1="0" x2="0" y2="0"/>
+    <text id="dim" x="0" y="0" font-family="Verdana" text-anchor="middle" fontSize="100" fill="red" transform="">dim</text>
+    
+    
+    <script>
+        var imageWidth = 500;
+        var drawing = false;
+        var start = {x:0, y:0}
+        var end = {x:0, y:0}
+        var enable_measure = false;
+        var measurement_scale = 1.0;
+        var measurement_unit = "px";
+
+        SVGRoot = document.getElementsByTagName("svg")[0];
+
+        var svg  = document.documentElement,
+            pt   = SVGRoot.createSVGPoint(),
+            dot  = document.querySelector('#dot'),
+            line = document.querySelector('line'),
+            dim = document.querySelector('#dim'),
+            image = document.querySelector('#img');
+
+        svg.addEventListener('mousemove',function(evt){
+          if (enable_measure) {
+          var loc = cursorPoint(evt);
+            dot.setAttribute('cx',loc.x);
+            dot.setAttribute('cy',loc.y);
+            if (drawing) {
+              line.setAttribute('x2',loc.x);
+              line.setAttribute('y2',loc.y);
+              var mid_x = (loc.x-start.x)/2.+start.x;
+              var mid_y = (loc.y-start.y)/2.+start.y;
+              var angle = Math.atan2(loc.y-start.y,loc.x-start.x)*180/3.1415926;
+              dim.setAttribute('x',mid_x);
+              dim.setAttribute('y',mid_y-5.);
+              dim.textContent = round(dist(start,loc)/measurement_scale,4) + " " + measurement_unit;
+              dim.setAttribute('transform',"rotate("+angle+","+mid_x+","+mid_y+")");
+              document.getElementById("measurement").innerHTML = round(dist(start,loc)/measurement_scale,4) + " " + measurement_unit;
+            }
+          }
+        },false);
+
+        svg.addEventListener("keydown", function(evt) {
+          if (evt.shiftKey) {
+            // console.log("shift");
+            console.log(example1.getZoom());
+            if (drawing) {
+              // figure out how to constrain the cursor to only horizontal or vertical
+            }
+          }
+        })
+
+        svg.addEventListener('mousedown', function(evt) {
+          if (enable_measure) {
+          if (evt.which==3) {
+            var loc = cursorPoint(evt);
+            console.log("loc.x = " + loc.x + "  loc.y = " + loc.y);
+            if (drawing == false) {
+              start = loc; 
+              console.log(start);
+              line.setAttribute('x1',loc.x);
+              line.setAttribute('y1',loc.y);
+              drawing = true;
+            }
+            else { 
+              drawing = false;
+              end = loc;
+              line.setAttribute('x2',loc.x);
+              line.setAttribute('y2',loc.y);
+            }
+          }
+        }
+        })
+
+        svg.addEventListener('oncontextmenu', function(evt) {
+          return false;
+        })
+
+        function dist(s,e) {
+          return Math.sqrt((e.x-s.x)*(e.x-s.x) + (e.y-s.y)*(e.y-s.y));
+        }
+
+        // Get point in global SVG space
+        function cursorPoint(evt){
+          pt.x = evt.clientX; pt.y = evt.clientY;
+          return pt.matrixTransform(SVGRoot.getScreenCTM().inverse());
+        }
+
+        function wheelValue(evt) {
+            sw = evt.detail;
+            console.log(sw);
+            return sw;
+        }
+
+        function RightMouseDown() { return false; }
+
+        function round(value, decimals) {
+          return Number(Math.round(value+'e'+decimals)+'e-'+decimals);
+        }
+
+        function enableMeasurement() {
+          console.log("measure");
+          enable_measure = true;
+        }
+
+        function setScale() {
+          var pixel_length = parseFloat(document.getElementById("measurement").innerHTML);
+          var real_string = document.getElementById("real_value").value;
+          console.log("pixel length: " + pixel_length + "  real length: " + real_string);
+          var real_length = parseFloat(real_string);//real_string.match(/(\d+)/g);
+          var units = real_string.split(/[0-9]+/g).pop();
+          console.log("length: " + real_length);
+          console.log("units: " + units);
+          var scale = round(pixel_length / real_length,3);
+          document.getElementById("scale").innerHTML = scale + " px / " + units;
+          measurement_unit = units;
+          measurement_scale = pixel_length / real_length;
+        }
+
+        function importImage(evt) {
+          var selectedImage = evt.target.files[0];
+          console.log(selectedImage);
+          // var image_name = document.getElementById("importbtn").value;
+          // var file_reader = new FileReader();
+          // file_reader.readAsDataURL(image_name);
+          // image.setAttribute('xlink:href',image_name);
+          // console.log(image_name);
+        }
+
+    </script>
+
+    <script>
+      svg.oncontextmenu=function() {
+        return false;
+      }
+
+    </script>
+
+</svg>
+</div>
+
+<div class="controller">
+  <h4>Import Image:</h4>
+  <input class="btn btn-block" type="file" id="importbtn"><br>
+  <input class="btn btn-block" type="button" id="measurebtn" value="Measure" onclick="enableMeasurement()"><br>
+  <pre id="measurement">0 px</pre><br>
+  <h4>Actual Length:</h4>
+  <input class="form-control" type="text" style="width:100%; display:inline-block" id="real_value" placeholder="3 mm">
+  <!-- <button style="width:30%" class="btn dropdown-toggle" type="button" id="units" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">mm <span class="caret"></span> -->
+  </button><br><br>
+  <input class="btn btn-block" type="button" value="Set Scale" onclick="setScale()"><br>
+  <pre id="scale">1.00 pixels / mm</pre><br>
+</div>
+
+<script type="text/javascript">
+
+  document.getElementById("importbtn").onchange = function(evt) {
+          var selectedImage = evt.target.files[0];
+          var file_reader = new FileReader();
+          var imgtag = document.getElementById("img");
+          imgtag.title = selectedImage.name;
+
+          file_reader.onload = function(event) {
+            imgtag.setAttribute('xlink:href',event.target.result);
+          }
+
+          file_reader.readAsDataURL(selectedImage);
+          console.log(selectedImage);
+        }
+
+</script>
+
+</body>
+</html>
