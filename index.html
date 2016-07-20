@@ -400,7 +400,6 @@
           var file_reader = new FileReader();
           var imgtag = document.getElementById("img");
           imgtag.title = selectedImage.name;
-
           file_reader.onload = function(event) {
             imgtag.setAttribute('xlink:href',event.target.result);
           }
@@ -413,7 +412,8 @@
           var imgtag = document.getElementById("img");
           // should i set this to null first to trigger a change?
           //imgtag.setAttribute('xlink:href','');
-          imgtag.setAttribute('xlink:href','http://localhost:5513/preview.jpg');
+          var src = 'http://localhost:5513/preview.jpg?t=' + new Date().getTime();
+          imgtag.setAttribute('xlink:href',src);
         }
 
   document.getElementById("measurebtn").onclick = function() {
